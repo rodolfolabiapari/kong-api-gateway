@@ -1,0 +1,63 @@
+version: "3.3"
+
+
+volumes:
+  db-kong-postgres:  
+
+
+networks:
+  kong-net:
+
+services:
+  kong-database:
+    image: postgres:9.6
+    #container_name: kong-database
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_USER=rodolfo
+      - POSTGRES_DB=kong
+      - POSTGRES_PASSWORD=rodolfopassword
+    volumes:
+      - "db-kong-postgres:/var/lib/postgresql/data"
+    networks:
+      - kong-net
+
+#  deve ser executado antes 
+#  kong-migrations:
+#    image: kong:2.0.1-alpine
+#    command: kong migrations bootstrap
+#    #command: kong migrations reset --yes # to reset db
+#    environment:
+#      KONG_DATABASE: postgres #must be postgres or cassandra
+#      KONG_PG_HOST: kong-database
+#      KONG_PG_PASSWORD: rodolfopassword
+#      KONG_PG_USER: rodolfo
+#      KONG_PG_PORT: 5432
+#    networks:
+#      - kong-net
+#    restart: on-failure
+#
+  kong:
+    image: kong:2.0.1-ubuntu
+    container_name: kong
+    environment:
+      - KONG_DATABASE=postgres
+      - KONG_PG_HOST=kong-database
+      - KONG_PG_PASSWORD=rodolfopassword
+      - KONG_PG_USER=rodolfo
+      - KONG_PG_PORT=5432
+      # log
+      - KONG_PROXY_ACCESS_LOG=/dev/stdout
+      - KONG_ADMIN_ACCESS_LOG=/dev/stdout
+      - KONG_PROXY_ERROR_LOG=/dev/stderr
+      - KONG_ADMIN_ERROR_LOG=/dev/stderr
+    restart: always
+    ports:
+      - "8000:8000"
+      - "8443:8443"
+      - "8001:8001"
+      - "7946:7946"
+      - "7946:7946/udp"
+    networks:
+      - kong-net

@@ -1,0 +1,173 @@
+version: "3.3"
+
+# https://www.popularowl.com/api-first/kong-api-gateway-getting-started/ topico 8
+
+# injetar um header jwt pro upstream
+# oauth
+# mtls (enterprise)
+
+volumes:
+  db_kong: {}
+  db_konga: {}
+
+networks:
+  kong-net:
+
+
+services:
+  ##############################################
+  # KONG DB
+  db-kong:
+    image: postgres:9.6
+    environment:
+      POSTGRES_DB: kong
+      POSTGRES_PASSWORD: kong-database-password
+      POSTGRES_USER: kong-database-user
+    #ports:
+    #  - "5432:5432"
+    networks:
+      - kong-net
+    volumes:
+      - db_kong:/var/lib/postgresql/data
+
+  # preparacao do db para o kong
+  kong-migrations:
+    image: kong:2.0.1-alpine
+    command: kong migrations bootstrap
+    #command: kong migrations reset --yes # to reset db
+    depends_on:
+      - db-kong
+    environment:
+      KONG_DATABASE: postgres
+      KONG_PG_DATABASE: kong
+      KONG_PG_HOST: db-kong
+      KONG_PG_PASSWORD: kong-database-password
+      KONG_PG_USER: kong-database-user
+    networks:
+      - kong-net
+    restart: on-failure
+
+#  # upgrade do db
+#  kong-migrations-up:
+#    image: kong:2.0.1-alpine
+#    command: kong migrations up && kong migrations finish
+#    depends_on:
+#      - db-kong
+#    environment:
+#      KONG_DATABASE: postgres
+#      KONG_PG_DATABASE: kong
+#      KONG_PG_HOST: db-kong
+#      KONG_PG_PASSWORD: kong-database-password
+#      KONG_PG_USER: kong-database-user
+#    networks:
+#      - kong-net
+#    restart: on-failure
+
+  kong:
+    #image: kong:2.0.1-alpine
+    image: kong:2.0.1-ubuntu
+    #user: kong-user
+    depends_on:
+      - db-kong
+    environment:
+      KONG_ADMIN_ACCESS_LOG: /dev/stdout
+      KONG_ADMIN_ERROR_LOG: /dev/stderr
+      KONG_ADMIN_LISTEN: '0.0.0.0:8001'
+      KONG_DATABASE: postgres
+      KONG_PG_DATABASE: kong
+      KONG_PG_HOST: db-kong
+      KONG_PG_PASSWORD: kong-database-password
+      KONG_PG_USER: kong-database-user
+      KONG_PROXY_ACCESS_LOG: /dev/stdout
+      KONG_PROXY_ERROR_LOG: /dev/stderr
+    networks:
+      - kong-net
+    ports:
+      - "8000:8000/tcp"
+      - "8001:8001/tcp"
+      - "8443:8443/tcp"
+      - "8444:8444/tcp"
+
+
+
+
+
+
+  ##############################
+  # Konga SEM banco de dados
+#  konga:
+#    image: pantsel/konga:0.14.7
+#    ports:
+#      - "1337:1337"
+#    environment:
+#      - "NODE_ENV=development"
+#      - "HOST=localhost"
+#      - "TOKEN_SECRET={{somerandomstring}}"
+#    networks:
+#      - kong-net
+
+
+
+
+
+
+
+
+
+
+#  ###############################################
+#  # konga com Banco de dados
+#  db-konga:
+#    image: postgres:9.6
+#    environment:
+#      POSTGRES_DB: konga
+#      POSTGRES_PASSWORD: konga-database-password
+#      POSTGRES_USER: konga-database-user
+#    #ports:
+#    #  - "5432"
+#    networks:
+#      - kong-net
+#    volumes:
+#      - db_konga:/var/lib/postgresql/data
+#
+#
+#  konga:
+#    image: pantsel/konga:0.14.7
+#    command: -c prepare -a postgres -u "postgresql://db-konga:5432" #"postgresql://db-konga/konga"
+#    depends_on:
+#      - db-konga
+#    environment:
+#      DB_ADAPTER: postgres
+#      DB_HOST: db-konga
+#      DB_PORT: 5432 
+#      DB_USER: konga-database-user
+#      DB_PASSWORD: konga-database-password
+#      DB_DATABASE: konga
+#      NODE_ENV: development
+#
+#
+#    #- TOKEN_SECRET: {{somerandomstring}}" \
+#    #- DB_ADAPTER: the-name-of-the-adapter" \ // 'mongo','postgres','sqlserver'  or 'mysql'
+#    #- DB_HOST: your-db-hostname" \
+#    #- DB_PORT: your-db-port" \ // Defaults to the default db port
+#    #- DB_USER: your-db-user" \ // Omit if not relevant
+#    #- DB_PASSWORD: your-db-password" \ // Omit if not relevant
+#    #- DB_DATABASE: your-db-name" \ // Defaults to 'konga_database'
+#    #- DB_PG_SCHEMA: my-schema"\ // Optionally define a schema when integrating with prostgres
+#    #- NODE_ENV: production" \ // or 'development' | defaults to 'development'
+#    networks:
+#      - kong-net
+
+#  oauth2:
+#    image: rodolfolabiapari/oauth2-web
+#    ports:
+#      - "3000:3000"
+#    networks:
+#      - kong-net
+
+#  httpbin:
+#    image: kennethreitz/httpbin #citizenstig/httpbin 8000
+#    ports:
+#      - "8080:80"
+#    networks:
+#      - kong-net
